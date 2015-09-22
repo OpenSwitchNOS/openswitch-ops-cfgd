@@ -33,6 +33,7 @@ import cfgdb
 type_startup_config = "startup"
 
 vlog = ovs.vlog.Vlog("cfgmgmt")
+TEMPORARY_DB_SHOW_STARTUP = "unix:/var/run/openvswitch/temp_startup.sock"
 
 def show_config(args):
 
@@ -49,7 +50,18 @@ def show_config(args):
         try :
             parsed = json.loads(row.config)
             print("Startup configuration:")
-            print json.dumps(parsed,  indent=4, sort_keys=True)
+            manager = OvsdbConnectionManager(TEMPORARY_DB_SHOW_STARTUP, settings.get('ovs_schema'))
+            manager.start()
+            cnt = 30
+            while not manager.idl.run() and cnt > 0:
+                cnt -= 1
+                time.sleep(.1)
+            # read the schema
+            schema = restparser.parseSchema(settings.get('ext_schema'))
+            run_config_util = RunConfigUtil(manager.idl, schema)
+            run_config_util.write_config_to_db(parsed)
+            manager.idl.close()
+
         except ValueError, e:
             print("Invalid json from configdb. Exception: %s\n" % e)
     else:

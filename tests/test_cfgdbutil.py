@@ -26,9 +26,6 @@ import json
 from halonvsi.docker import *
 from halonvsi.halon import *
 
-ADD_STARTUP_ROW_FILE = "./src/ops-cfgd/tests/add_startup_row"
-JSON_CONFIG_STRING = "{\"config-type\":\"test\"}"
-
 class cfgdbUtilTests( HalonTest ):
 
   def setupNet(self):
@@ -44,21 +41,8 @@ class cfgdbUtilTests( HalonTest ):
       link=HalonLink, controller=None,
       build=True)
 
-  def insert_startup_config(self):
-    #configuring Halon, in the future it would be through
-    #proper Halon commands
-    s1 = self.net.switches[ 0 ]
-
-    #Add one rows to configdb of type==startup
-    with open(ADD_STARTUP_ROW_FILE) as f_startup:
-        startup_row = f_startup.read()
-
-    output = s1.cmd(startup_row)
-
   def cfgdbutils_delete_command(self):
     info('\n########## Test cfgdbutils delete commands ##########')
-    #configuring Halon, in the future it would be through
-    #proper Halon commands
     s1 = self.net.switches[ 0 ]
 
     info('\n### Delete startup config saved in configdb ###')
@@ -78,30 +62,22 @@ class cfgdbUtilTests( HalonTest ):
   def cfgdbutils_show_command(self):
     info('\n########## Test cfgdbutils show commands ##########')
 
-    self.insert_startup_config()
-    #configuring Halon, in the future it would be through
-    #proper Halon commands
     s1 = self.net.switches[ 0 ]
 
     # Note: I have to use the extra "end" CLI command to flush out
     #       the buffer.
+    s1.cmdCLI("configure terminal")
+    s1.cmdCLI("lldp holdtime 9")
+    s1.cmdCLI("radius-server host 1.1.1.1")
+    s1.cmdCLI("exit")
+    s1.cmdCLI("copy running-config startup-config")
     output = s1.cmdCLI("show startup-config")
     output += s1.cmdCLI("end")
-    debug(output)
 
-    output = output[output.index('{'):]
-    output = output[:output.rindex('}') + 1 ]
-
-    parsed =json.loads(output)
-    output = json.dumps(parsed, indent=4, sort_keys=True)
-
-    parsed =json.loads(JSON_CONFIG_STRING)
-    config_string = json.dumps(parsed, indent=4, sort_keys=True)
-
-    if config_string in output:
+    if "lldp holdtime 9" in output and "radius-server host 1.1.1.1" in output:
       info('\n### Passed: Fetch startup configuration success ###')
     else:
-      assert (config_string in out), \
+      assert ("lldp holdtime 9" in output and "radius-server host 1.1.1.1" in output), \
            "Failed: To fetch startup configuration"
 
   def cfgdbutils_copy_running_startup(self):
@@ -110,9 +86,8 @@ class cfgdbUtilTests( HalonTest ):
     s1 = self.net.switches[ 0 ]
 
     # Change hostname as CT-TEST in running db and copy the running
-    # configuration to startup config and verify the JSON  dump
-    # of config contain hostname as CT-TEST("hostname": "CT-TEST").
-
+    # config to startup config and verify in show startup config has
+    # hostname as CT-TEST.
     s1.cmdCLI("configure terminal")
     s1.cmdCLI("hostname CT-TEST")
     s1.cmdCLI("exit")
@@ -121,19 +96,10 @@ class cfgdbUtilTests( HalonTest ):
     output = s1.cmdCLI("show startup-config")
     output += s1.cmdCLI("end")
 
-    output = output[output.index('{'):]
-    output = output[:output.rindex('}') + 1 ]
-
-    parsed =json.loads(output)
-    system = parsed["System"]
-    for key, value in system.iteritems():
-      hostname = value['hostname']
-      break
-
-    if "CT-TEST" in hostname:
+    if "CT-TEST" in output:
       info('\n### Passed: copy running to startup configuration ###')
     else:
-      assert ("CT-TEST" in hostname), \
+      assert ("CT-TEST" in output), \
            "Failed: copy running to startup configuration"
 
   def cfgdbutils_copy_startup_running(self):
@@ -141,22 +107,22 @@ class cfgdbUtilTests( HalonTest ):
 
     s1 = self.net.switches[ 0 ]
 
-    # Change hostname as openswitch in running db and copy the startup
+    # Add one more radius server in running db and copy the startup
     # configuration to running config and verify in show running config
     # that hostname is again changed to CT-TEST.
     s1.cmdCLI("configure terminal")
-    s1.cmdCLI("hostname openswitch")
+    s1.cmdCLI("radius-server host 2.2.2.2")
     s1.cmdCLI("exit")
     s1.cmdCLI("copy startup-config  running-config")
 
     output = s1.cmdCLI("show running-config")
     output += s1.cmdCLI("end")
 
-    if "hostname \"CT-TEST\"" in output:
-      info('\n### Passed: copy running to startup configuration ###\n')
+    if "radius-server host 2.2.2.2" not in output:
+      info('\n### Passed: copy startup to running configuration ###\n')
     else:
-      assert ("hostname CT-TEST" in output), \
-           "Failed: copy running to startup configuration"
+      assert ("radius-server host 2.2.2.2" not in output), \
+           "Failed: copy startup to running configuration"
 
 class Test_cfgdbutil:
   def setup(self):

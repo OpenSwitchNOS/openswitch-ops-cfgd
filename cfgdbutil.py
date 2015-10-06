@@ -48,27 +48,30 @@ def show_config(args):
     row, tbl_found = cfg.find_row_by_type("startup")
 
     if tbl_found:
-        try:
-            # Here we copy saved configuration from config DB to temporary DB
-            # and the current startup configuration command displays output
-            # by traversing the temporary DB.
+        try :
             parsed = json.loads(row.config)
             print("Startup configuration:")
-            manager = OvsdbConnectionManager(TEMPORARY_DB_SHOW_STARTUP,
-                                             settings.get('ovs_schema'))
-            manager.start()
-            cnt = 30
-            while not manager.idl.run() and cnt > 0:
-                time.sleep(.1)
-                cnt -= 1
-            if cnt <= 0:
-                print("IDL connection timeout")
-                return False
-            # read the schema
-            schema = restparser.parseSchema(settings.get('ext_schema'))
-            run_config_util = RunConfigUtil(manager.idl, schema)
-            run_config_util.write_config_to_db(parsed)
-            manager.idl.close()
+            if (args[1] == "json"):
+                print json.dumps(parsed,  indent=4, sort_keys=True)
+            elif (args[1] == "cli"):
+                # Here we copy saved configuration from config DB to temporary DB
+                # and the current startup configuration command displays output
+                # by traversing the temporary DB.
+                manager = OvsdbConnectionManager(TEMPORARY_DB_SHOW_STARTUP,
+                                                 settings.get('ovs_schema'))
+                manager.start()
+                cnt = 30
+                while not manager.idl.run() and cnt > 0:
+                    time.sleep(.1)
+                    cnt -= 1
+                if cnt <= 0:
+                    print("IDL connection timeout")
+                    return False
+                # read the schema
+                schema = restparser.parseSchema(settings.get('ext_schema'))
+                run_config_util = RunConfigUtil(manager.idl, schema)
+                run_config_util.write_config_to_db(parsed)
+                manager.idl.close()
 
         except ValueError, e:
             print("Invalid json from configdb. Exception: %s\n" % e)
@@ -190,7 +193,9 @@ def usage(name):
         usage: %s [--help] COMMAND ARG...\n\n\
         The following commands are supported: \n\n\
         show startup-config \n\
-            Shows the contentes of startup configuration \n\n\
+            Shows the contentes of startup configuration in CLI format\n\n\
+        show startup-config json\n\
+            Shows the contentes of startup configuration in JSON\n\n\
         copy running-config startup-config \n\
             Copy running config to startup config \n\n\
         copy start-config running-config \n\
@@ -222,7 +227,7 @@ def main():
 
     #Command Dictionary with command name as key and key value as list
     #with functions and corresponding argument length
-    commands = {"show":   (show_config, 1),
+    commands = {"show":   (show_config, 2),
                 "copy":   (copy_config, 2),
                 "delete": (delete_config, 1)}
 

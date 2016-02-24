@@ -60,13 +60,17 @@ def show_config(args):
                 manager = OvsdbConnectionManager(TEMPORARY_DB_SHOW_STARTUP,
                                                  settings.get('ovs_schema'))
                 manager.start()
-                cnt = 30
-                while not manager.idl.run() and cnt > 0:
-                    time.sleep(.1)
-                    cnt -= 1
-                if cnt <= 0:
-                    print("IDL connection timeout")
-                    return False
+
+                seqno = manager.idl.change_seqno
+                start_time = time.time()
+                print "Poller time start"
+                while (seqno == manager.idl.change_seqno):
+                    manager.idl.run()
+                    poller = ovs.poller.Poller()
+                    manager.idl.wait(poller)
+                    poller.block()
+                print "Poller time %0.2f end" % (time.time() - start_time)
+
                 # read the schema
                 schema = restparser.parseSchema(settings.get('ext_schema'))
                 run_config_util = RunConfigUtil(manager.idl, schema)
@@ -92,13 +96,15 @@ def copy_running_startup():
     idl = manager.idl
 
     init_seq_no = idl.change_seqno
+    start_time = time.time()
+    print "Poller time start"
     # Wait until the connection is ready
-    while True:
+    while (init_seq_no == idl.change_seqno):
         idl.run()
-        # print self.idl.change_seqno
-        if init_seq_no != idl.change_seqno:
-            break
-        time.sleep(1)
+        poller = ovs.poller.Poller()
+        idl.wait(poller)
+        poller.block()
+    print "Poller time %0.2f end" % (time.time() - start_time)
 
     restschema = restparser.parseSchema(settings.get('ext_schema'))
 
@@ -139,12 +145,18 @@ def copy_startup_running():
     manager = OvsdbConnectionManager(settings.get('ovs_remote'),
                                      settings.get('ovs_schema'))
     manager.start()
-    init_seq_no = manager.idl.change_seqno
-    while True:
-        manager.idl.run()
-        if init_seq_no != manager.idl.change_seqno:
-            break
-        time.sleep(1)
+    idl = manager.idl
+
+    init_seq_no = idl.change_seqno
+    start_time = time.time()
+    print "Poller time start"
+    # Wait until the connection is ready
+    while (init_seq_no == idl.change_seqno):
+        idl.run()
+        poller = ovs.poller.Poller()
+        idl.wait(poller)
+        poller.block()
+    print "Poller time %0.2f end" % (time.time() - start_time)
 
     # read the schema
     schema = restparser.parseSchema(settings.get('ext_schema'))

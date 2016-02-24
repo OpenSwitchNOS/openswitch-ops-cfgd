@@ -14,6 +14,7 @@
 
 import os
 import sys
+import time
 from time import sleep
 
 import ovs.dirs
@@ -71,13 +72,19 @@ class Cfgdb(object):
         self.date = None
         self.hardware = None
 
-        '''
-        The wait time is 30 * 0.1 = 3 seconds
-        '''
-        cnt = max_time_to_wait_for_config_data
-        while not self.idl.run() and cnt > 0:
-            cnt -= 1
-            sleep(.1)
+        # Sequence number when we last processed the db.
+        seqno = self.idl.change_seqno
+
+        time_start = time.time()
+        print "cfgdb idl run start"
+        # Wait until the ovsdb sync up.
+        while (seqno == self.idl.change_seqno):
+            self.idl.run()
+            poller = ovs.poller.Poller()
+            self.idl.wait(poller)
+            poller.block()
+
+        print "cfgdb idl run end %.2f\n" % (time.time() - time_start)
 
     def find_row_by_type(self, cfgtype):
         '''

@@ -29,6 +29,7 @@ from ovs.db import error
 from ovs.db import types
 import ovs.db.idl
 import cfgdb
+import ops.dc
 
 type_startup_config = "startup"
 
@@ -86,24 +87,20 @@ def show_config(args):
 
 def copy_running_startup():
     cfg = cfgdb.Cfgdb()
-    manager = OvsdbConnectionManager(settings.get('ovs_remote'),
-                                     settings.get('ovs_schema'))
-    manager.start()
-    idl = manager.idl
 
-    init_seq_no = idl.change_seqno
-    # Wait until the connection is ready
+    # set up IDL
+    extschema = restparser.parseSchema(settings.get('ext_schema'))
+    ovsschema = settings.get('ovs_schema')
+    ovsremote = settings.get('ovs_remote')
+    idl = ops.dc.register(extschema, ovsschema, ovsremote)
+
+    change_seqno = idl.change_seqno
     while True:
         idl.run()
-        # print self.idl.change_seqno
-        if init_seq_no != idl.change_seqno:
+        if change_seqno != idl.change_seqno:
             break
         time.sleep(1)
-
-    restschema = restparser.parseSchema(settings.get('ext_schema'))
-
-    run_config_util = RunConfigUtil(idl, restschema)
-    config = run_config_util.get_running_config()
+    config = ops.dc.read(extschema, idl)
 
     cfg.config = ovs.json.to_string(config)
     cfg.type = "startup"
@@ -136,20 +133,28 @@ def copy_startup_running():
         return False
 
     # set up IDL
-    manager = OvsdbConnectionManager(settings.get('ovs_remote'),
-                                     settings.get('ovs_schema'))
-    manager.start()
-    init_seq_no = manager.idl.change_seqno
+    extschema = restparser.parseSchema(settings.get('ext_schema'))
+    ovsschema = settings.get('ovs_schema')
+    ovsremote = settings.get('ovs_remote')
+    idl = ops.dc.register(extschema, ovsschema, ovsremote)
+
+    change_seqno = idl.change_seqno
     while True:
-        manager.idl.run()
-        if init_seq_no != manager.idl.change_seqno:
+        idl.run()
+        if change_seqno != idl.change_seqno:
             break
         time.sleep(1)
 
     # read the schema
-    schema = restparser.parseSchema(settings.get('ext_schema'))
-    run_config_util = RunConfigUtil(manager.idl, schema)
-    run_config_util.write_config_to_db(data)
+    txn = ovs.db.idl.Transaction(idl)
+    status = ops.dc.write(data, extschema, idl, txn)
+    while True:
+        if status == 'incomplete':
+            idl.run()
+            status = txn.commit()
+        else:
+            break
+
     cfg.close()
     return True
 

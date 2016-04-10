@@ -19,6 +19,7 @@ import sys
 import argparse
 import json
 from time import sleep
+import base64
 
 import ovs.dirs
 from ovs.db import error
@@ -30,9 +31,8 @@ import ovs.unixctl
 import ovs.unixctl.server
 import ovs.vlog
 
-from runconfig.runconfig import RunConfigUtil
+import ops.dc
 from opsrest.settings import settings
-from opsrest.manager import OvsdbConnectionManager
 from opslib import restparser
 
 # ovs definitions
@@ -199,31 +199,45 @@ def push_config_to_db():
     if saved_config is None:
         vlog.info('No saved configuration exists')
     else:
-        #OPS_TODO: Change this log msg to the actual push code when available
+        # TODO: Change this log msg to the actual push code when available
         vlog.info('Config data found')
         try:
-            data = json.loads(saved_config)
+            data = json.loads(base64.b64decode(saved_config))
         except ValueError, e:
             print("Invalid json from configdb. Exception: %s\n" % e)
             return
 
-        # set up IDL
-        manager = OvsdbConnectionManager(settings.get('ovs_remote'),
-                                         settings.get('ovs_schema'))
-        manager.start()
-        manager.idl.run()
+        extschema = restparser.parseSchema(settings.get('ext_schema'))
+        ovsschema = settings.get('ovs_schema')
+        ovsremote = settings.get('ovs_remote')
 
-        init_seq_no = manager.idl.change_seqno
+        # initialize idl
+        opsidl = ops.dc.register(extschema, ovsschema, ovsremote)
+        curr_seqno = opsidl.change_seqno
+
+        count = 0
         while True:
-            manager.idl.run()
-            if init_seq_no != manager.idl.change_seqno:
+            opsidl.run()
+            count+=1
+            if curr_seqno != opsidl.change_seqno:
+                count=0
                 break
-            sleep(1)
+            # prevent infinite loop
+            elif count > 100:
+                break
+            sleep(0.1)
 
-        # read the schema
-        schema = restparser.parseSchema(settings.get('ext_schema'))
-        run_config_util = RunConfigUtil(manager.idl, schema)
-        run_config_util.write_config_to_db(data)
+        # this means failure
+        if count > 0:
+            return False
+
+        txn = ovs.db.idl.Transaction(opsidl)
+        result = ops.dc.write(data, extschema, opsidl, txn)
+        if result == ovs.db.idl.Transaction.INCOMPLETE:
+            result = txn.commit_block()
+
+        if result not in [ovs.db.idl.Transaction.SUCCESS, ovs.db.idl.Transaction.UNCHANGED]:
+            return False
 
     return True
 

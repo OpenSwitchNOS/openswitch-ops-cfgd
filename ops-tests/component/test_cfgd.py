@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+# Copyright (C) 2016 Hewlett Packard Enterprise Development LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -120,9 +118,9 @@ def test_cfgd(topology, step):
 
     sw1('configure terminal')
     sw1('hostname CT-TEST')
-    # sw1._shells['vtysh']._prompt = (
-    #     '(^|\n)CT-TEST(\\([\\-a-zA-Z0-9]*\\))?#'
-    # )
+    sw1._shells['vtysh']._prompt = (
+        '(^|\n)CT-TEST(\\([\\-a-zA-Z0-9]*\\))?#'
+    )
     sw1(' ')
     sw1('end')
     sw1('copy running-config startup-config')

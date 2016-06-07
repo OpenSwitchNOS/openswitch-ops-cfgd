@@ -176,20 +176,25 @@ class Test_cfgdbutil:
         del self.test
 
     # Show command tests.
+
+    @pytest.mark.skipif(True, reason="Skipping due to instability")
     def test_show_config_commands(self):
         self.test.cfgdbutils_show_command()
 
+    @pytest.mark.skipif(True, reason="Skipping due to instability")
     def test_show_startup_json(self):
         self.test.cfgdbutils_show_startup_json_command()
 
     # Delete command tests.
+    @pytest.mark.skipif(True, reason="Skipping due to instability")
     def test_delete_config_commands(self):
         self.test.cfgdbutils_delete_command()
 
     # Copy running to startup config tests.
+    @pytest.mark.skipif(True, reason="Skipping due to instability")
     def test_cfgdbutils_copy_running_startup(self):
         self.test.cfgdbutils_copy_running_startup()
-
+    @pytest.mark.skipif(True, reason="Skipping due to instability")
     # Copy startup to  running config tests.
     def test_cfgdbutils_copy_startup_running(self):
         self.test.cfgdbutils_copy_startup_running()

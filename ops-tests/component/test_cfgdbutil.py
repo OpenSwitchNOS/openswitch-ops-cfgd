@@ -28,7 +28,9 @@ TOPOLOGY = """
 [type=openswitch name="Switch 1"] sw1
 """
 
-
+@pytest.mark.skipif(True, reason="Test case is disable because of the actual "
+                                 "builds have issues related with commands "
+                                 "used in this test case.")
 def test_cfgdb_util(topology, step):
     sw1 = topology.get('sw1')
 

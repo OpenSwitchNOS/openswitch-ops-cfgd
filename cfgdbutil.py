@@ -75,13 +75,18 @@ def show_config(args):
                     poller.block()
 
                 # write to db
-                txn = ovs.db.idl.Transaction(opsidl)
-                result = ops.dc.write(data, extschema, opsidl, txn)
-                if result == ovs.db.idl.Transaction.INCOMPLETE:
-                    result = txn.commit_block()
+                result = ops.dc.write(data, extschema, opsidl)
+                error = None
+                if isinstance(result, tuple):
+                    error = result[1]
+                    result == result[0]
+                else:
+                    error = result
 
+                # (result, error) = ops.dc.write(data, extschema, opsidl)
                 if result not in [ovs.db.idl.Transaction.SUCCESS, ovs.db.idl.Transaction.UNCHANGED]:
-                    print("Transaction result %s" %result)
+                    print "Transaction status: %s" % result
+                    print "Transaction error: %s" % error
                     return False
 
         except ValueError, e:

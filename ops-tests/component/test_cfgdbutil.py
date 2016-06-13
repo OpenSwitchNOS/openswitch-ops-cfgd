@@ -16,6 +16,7 @@
 import pytest
 from time import sleep
 import json
+import pytest
 
 TOPOLOGY = """
 #
@@ -27,7 +28,6 @@ TOPOLOGY = """
 # Nodes
 [type=openswitch name="Switch 1"] sw1
 """
-
 
 @pytest.mark.skipif(True, reason="Test case is disable because of the actual "
                                  "builds have issues related with commands "

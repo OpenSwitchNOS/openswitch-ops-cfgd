@@ -177,6 +177,7 @@ class Test_cfgdbutil:
         del self.test
 
     # Show command tests.
+
     def test_show_config_commands(self):
         self.test.cfgdbutils_show_command()
 

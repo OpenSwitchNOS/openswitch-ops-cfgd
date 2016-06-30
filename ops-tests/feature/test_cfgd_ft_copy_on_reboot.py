@@ -16,6 +16,7 @@
 import os
 import sys
 from time import sleep
+from pytest import mark
 # import json
 # import subprocess
 
@@ -198,6 +199,7 @@ def copy_startup_to_running_on_bootup(sw1):
     assert chk_cur_next_cfg(sw1)
 
 
+@mark.gate
 def test_cfgd(topology, step):
     sw1 = topology.get('sw1')
 

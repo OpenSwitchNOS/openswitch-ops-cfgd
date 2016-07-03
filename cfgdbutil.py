@@ -106,6 +106,7 @@ def copy_running_startup():
     extschema = restparser.parseSchema(settings.get('ext_schema'))
     ovsschema = settings.get('ovs_schema')
     ovsremote = settings.get('ovs_remote')
+    print "Copy in progress ...."
 
     # initialize idl
     opsidl = ops.dc.register(extschema, ovsschema, ovsremote)
@@ -118,7 +119,11 @@ def copy_running_startup():
         opsidl.wait(poller)
         poller.block()
 
-    running_config = ops.dc.read(extschema, opsidl)
+    try:
+        running_config = ops.dc.read(extschema, opsidl)
+    except:
+        print "ERROR: Copy failed"
+        return False
 
     # base64 encode to save as startup
     config = base64.b64encode(json.dumps(running_config))
@@ -132,6 +137,8 @@ def copy_running_startup():
         cfg.insert_row()
 
     cfg.close()
+
+    print "Success"
     return True
 
 
@@ -153,6 +160,7 @@ def copy_startup_running():
         cfg.close()
         return False
 
+    print "Copy in progress ...."
     extschema = restparser.parseSchema(settings.get('ext_schema'))
     ovsschema = settings.get('ovs_schema')
     ovsremote = settings.get('ovs_remote')
@@ -177,8 +185,10 @@ def copy_startup_running():
         error = result
 
     if result not in [ovs.db.idl.Transaction.SUCCESS, ovs.db.idl.Transaction.UNCHANGED]:
+        print "ERROR: Copy failed"
         return False
 
+    print "Success"
     return True
 
 
@@ -202,7 +212,7 @@ def copy_config(args):
     elif (args[0] == "startup-config" and args[1] == "running-config"):
         ret = copy_startup_running()
     else:
-        print("Unknow config (use --help for help)")
+        print("Unknown config (use --help for help)")
         ret = False
     restore_signals()
     return ret

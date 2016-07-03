@@ -165,14 +165,14 @@ def copy_startup_to_running_on_bootup(sw1):
         '(^|\n)CT-TEST(\\([\\-a-zA-Z0-9]*\\))?#'
     )
     sw1("exit")
-    # sw1("copy running-config startup-config")
-    sw1.libs.vtysh.copy_running_config_startup_config()
+    sw1("copy running-config startup-config")
+    #sw1.libs.vtysh.copy_running_config_startup_config()
     sleep(5)
-    # output = sw1("show running-config")
-    sw1.libs.vtysh.show_running_config()
+    output = sw1("show running-config")
+    #sw1.libs.vtysh.show_running_config()
 
-    # output = sw1("show startup-config")
-    sw1.libs.vtysh.show_startup_config()
+    output = sw1("show startup-config")
+    #sw1.libs.vtysh.show_startup_config()
 
     restart_system(sw1, "normal")
     sleep(10)

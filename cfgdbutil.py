@@ -24,6 +24,7 @@ import getopt
 import os
 import json
 import sys
+import signal
 
 import ovs.dirs
 from ovs.db import error
@@ -191,7 +192,20 @@ def copy_startup_running():
     return True
 
 
+def restore_signals():
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.signal(signal.SIGQUIT, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+    signal.signal(signal.SIGHUP, signal.SIG_DFL)
+
+def ignore_signals():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGQUIT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
 def copy_config(args):
+    ignore_signals()
     ret = True
     if (args[0] == "running-config" and args[1] == "startup-config"):
         ret = copy_running_startup()
@@ -200,6 +214,7 @@ def copy_config(args):
     else:
         print("Unknown config (use --help for help)")
         ret = False
+    restore_signals()
     return ret
 
 
@@ -208,6 +223,7 @@ def delete_config(args):
         print("Unknown config \"%s\" (Use --help for help)" % args[0])
         return False
 
+    ignore_signals()
     cfg = cfgdb.Cfgdb()
 
     #OPS TODO: To get confg type from user from user as args
@@ -218,9 +234,11 @@ def delete_config(args):
     else:
         print('No saved configuration exists')
         cfg.close()
+        restore_signals()
         return False
 
     cfg.close()
+    restore_signals()
     return True
 
 

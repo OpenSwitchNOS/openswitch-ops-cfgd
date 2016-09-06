@@ -15,7 +15,7 @@
 
 import pytest
 from time import sleep
-import pytest
+from pytest import mark
 
 TOPOLOGY = """
 #
@@ -107,7 +107,8 @@ def restart_system(switch, option):
     start_daemon(switch, platform_daemons)
     sleep(0.1)
 
-@pytest.mark.skipif(True, reason="Test case is disable because of the actual "
+@mark.gate
+@mark.skipif(True, reason="Test case is disable because of the actual "
                                  "builds have issues related with commands "
                                  "used in this test case.")
 def test_cfgd(topology, step):
